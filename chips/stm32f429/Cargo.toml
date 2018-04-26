@@ -1,0 +1,10 @@
+[package]
+name = "stm32f429"
+version = "0.1.0"
+authors = ["sensaoui"]
+
+[dependencies]
+cortexm4 = { path = "../../arch/cortex-m4" }
+kernel = { path = "../../kernel" }
+
+
