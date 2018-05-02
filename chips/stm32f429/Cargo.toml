@@ -6,5 +6,5 @@ authors = ["sensaoui"]
 [dependencies]
 cortexm4 = { path = "../../arch/cortex-m4" }
 kernel = { path = "../../kernel" }
-
+bitfield = "0.12.1"
 

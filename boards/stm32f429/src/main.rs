@@ -1,19 +1,6 @@
-//! 
-//! 
-//! Tock Kernel for STM32F429ZI Discovery.
-//! 
-//! 
-//! 
-//! Pin Configuration
-//! 
-//! LED: LED1 = PG_13, LED2 = PG.14
-//! 
-//! 
-
 #![no_std]
 #![no_main]
-#![feature(asm, const_fn, lang_items, compiler_builtins_lib, const_cell_new)]
-#![deny(missing_docs)]
+#![feature(asm, const_fn, lang_items, compiler_builtins_lib, const_cell_new, core_intrinsics)]
 
 extern crate capsules;
 extern crate compiler_builtins;
@@ -22,63 +9,82 @@ extern crate compiler_builtins;
 extern crate kernel;
 extern crate stm32f429;
 
-//use capsules::virtual_alarm::VirtualMuxAlarm;
-use stm32f429::rcc;
-
-
-/// Support routines for debugging I/O.
-///
-/// Note: Use of this module will trample any other USART3 configuration.
 #[macro_use]
 pub mod io;
+pub mod semihosting;
 
-// State for loading and holding applications.
-// How should the kernel respond when a process faults.
+use stm32f429::rcc;
+
+// State for loading apps.
+
+const NUM_PROCS: usize = 4;
+
+// how should the kernel respond when a process faults
 const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
 
-const NUM_PROCS: usize = 8;
-
 #[link_section = ".app_memory"]
-static mut APP_MEMORY: [u8; 131072] = [0; 131072];
+static mut APP_MEMORY: [u8; 16384] = [0; 16384];
 
-static mut PROCESSES: [Option<kernel::Process<'static>>; NUM_PROCS] = [None, None, None, None, None, None, None, None];
+static mut PROCESSES: [Option<kernel::Process<'static>>; NUM_PROCS] = [None, None, None, None];
 
-
-/// Supported drivers by the platform
-pub struct Platform {
+struct Discovery {
+    console: &'static capsules::console::Console<'static, semihosting::Channel>,
     gpio: &'static capsules::gpio::GPIO<'static, stm32f429::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, stm32f429::gpio::GPIOPin>,
+    button: &'static capsules::button::Button<'static, stm32f429::gpio::GPIOPin>,
     ipc: kernel::ipc::IPC,
 }
 
-
-impl kernel::Platform for Platform {
+impl kernel::Platform for Discovery {
     fn with_driver<F, R>(&self, driver_num: usize, f: F) -> R
     where
         F: FnOnce(Option<&kernel::Driver>) -> R,
     {
         match driver_num {
+            capsules::console::DRIVER_NUM => f(Some(self.console)),
             capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
             capsules::led::DRIVER_NUM => f(Some(self.led)),
+            capsules::button::DRIVER_NUM => f(Some(self.button)),
             kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None),
         }
     }
 }
 
-
-/// Entry point in the vector table called on hard reset.
 #[no_mangle]
 pub unsafe fn reset_handler() {
-	stm32f429::init();
+    stm32f429::init();
 
-	rcc::set_clock(rcc::CrystalClock::Clock16MHz, rcc::Clock::Clock168MHz);
+    let console = static_init!(
+        capsules::console::Console<semihosting::Channel>,
+        capsules::console::Console::new(
+            &io::STD_OUT,
+            115200,
+            &mut capsules::console::WRITE_BUF,
+            kernel::Grant::create()
+        )
+    );
+    kernel::hil::uart::UART::set_client(&io::STD_OUT, console);
 
-	let gpio_pins = static_init!(
-        [&'static stm32f429::gpio::GPIOPin; 2],
+    io::std_out_init();
+    console.initialize();
+
+    // Attach the kernel debug interface to this console
+    let kc = static_init!(capsules::console::App, capsules::console::App::default());
+    kernel::debug::assign_console_driver(Some(console), kc);
+
+    // GPIOs
+    rcc::enable_clock(rcc::Clock::AHB1(rcc::AHB1Clock::GPIOA), true);
+    rcc::enable_clock(rcc::Clock::AHB1(rcc::AHB1Clock::GPIOD), true);
+
+    let gpio_pins = static_init!(
+        [&'static stm32f429::gpio::GPIOPin; 5],
         [
-            &stm32f429::gpio::PA[3], // Bottom right header on DK board
-            &stm32f429::gpio::PA[5], // Bottom right header on DK board
+            &stm32f429::gpio::PA0,
+            &stm32f429::gpio::PD12,
+            &stm32f429::gpio::PD13,
+            &stm32f429::gpio::PD14,
+            &stm32f429::gpio::PD15
         ]
     );
 
@@ -86,40 +92,57 @@ pub unsafe fn reset_handler() {
         capsules::gpio::GPIO<'static, stm32f429::gpio::GPIOPin>,
         capsules::gpio::GPIO::new(gpio_pins)
     );
+
     for pin in gpio_pins.iter() {
         pin.set_client(gpio);
-    } 
+    }
 
-    // # LEDs
+    // LEDs
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     let led_pins = static_init!(
-        [(&'static stm32f429::gpio::GPIOPin, capsules::led::ActivationMode); 2],
+        [(&'static stm32f429::gpio::GPIOPin,capsules::led::ActivationMode); 1],
+        [(&stm32f429::gpio::PD13,capsules::led::ActivationMode::ActiveHigh)]
+    );
+
+    let led = static_init!(
+        capsules::led::LED<'static, stm32f429::gpio::GPIOPin>,
+        capsules::led::LED::new(led_pins),
+        capsules::led::LED::led_on(1)
+    );
+
+
+
+    // Buttons
+    let button_pins = static_init!(
+        [(&'static stm32f429::gpio::GPIOPin, capsules::button::GpioMode); 1],
         [
             (
-                &stm32f429::gpio::PG[13],
-                capsules::led::ActivationMode::ActiveHigh
-            ),
-            (
-                &stm32f429::gpio::PG[14],
-                capsules::led::ActivationMode::ActiveHigh
+                &stm32f429::gpio::PA0,
+                capsules::button::GpioMode::LowWhenPressed
             )
         ]
     );
-    let led = static_init!(
-        capsules::led::LED<'static, stm32f429::gpio::GPIOPin>,
-        capsules::led::LED::new(led_pins)
+
+    let button = static_init!(
+        capsules::button::Button<'static, stm32f429::gpio::GPIOPin>,
+        capsules::button::Button::new(button_pins, kernel::Grant::create())
     );
 
-    let platform = Platform {
-        led: led,
+    for &(btn, _) in button_pins.iter() {
+        btn.set_client(button);
+    }
+
+    let discovery = Discovery {
+        console: console,
         gpio: gpio,
+        led: led,
+        button: button,
         ipc: kernel::ipc::IPC::new(),
     };
 
     let mut chip = stm32f429::chip::STM32F429ZI::new();
 
-    
-
-    //debug!("Initialization complete. Entering main loop\r");
+    debug!("Initialization complete. Entering main loop");
     extern "C" {
         /// Beginning of the ROM region containing app images.
         static _sapps: u8;
@@ -130,7 +153,5 @@ pub unsafe fn reset_handler() {
         &mut PROCESSES,
         FAULT_RESPONSE,
     );
-
-    kernel::main(&platform, &mut chip, &mut PROCESSES, &platform.ipc);
-
+    kernel::main(&discovery, &mut chip, &mut PROCESSES, &discovery.ipc);
 }
