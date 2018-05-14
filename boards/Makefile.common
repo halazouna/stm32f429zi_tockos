@@ -7,7 +7,15 @@ MAKEFILE_COMMON_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 export RUSTUP_TOOLCHAIN ?= nightly-2018-01-05
 
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
 TOOLCHAIN ?= /home/abderrahmane/opt/gcc-arm-none-eabi-7-2017-q4-major/bin/arm-none-eabi
+else
+TOOLCHAIN ?= arm-none-eabi
+endif
+
+
 
 XARGO ?= xargo
 MINIMUM_XARGO_VERSION ?= 0.3.8
