@@ -61,6 +61,9 @@ pub enum AHB1Clock {
     GPIOB,
     GPIOC,
     GPIOD,
+    GPIOE,
+    GPIOF,
+    GPIOG
 }
 
 pub fn enable_clock(clock: Clock, enable: bool) {

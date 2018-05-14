@@ -75,6 +75,7 @@ pub unsafe fn reset_handler() {
 
     // GPIOs
     rcc::enable_clock(rcc::Clock::AHB1(rcc::AHB1Clock::GPIOA), true);
+    rcc::enable_clock(rcc::Clock::AHB1(rcc::AHB1Clock::GPIOG), true);
     rcc::enable_clock(rcc::Clock::AHB1(rcc::AHB1Clock::GPIOD), true);
 
     let gpio_pins = static_init!(
@@ -82,8 +83,8 @@ pub unsafe fn reset_handler() {
         [
             &stm32f429::gpio::PA0,
             &stm32f429::gpio::PD12,
-            &stm32f429::gpio::PD13,
-            &stm32f429::gpio::PD14,
+            &stm32f429::gpio::PG13,
+            &stm32f429::gpio::PG14,
             &stm32f429::gpio::PD15
         ]
     );
@@ -101,7 +102,7 @@ pub unsafe fn reset_handler() {
     #[cfg_attr(rustfmt, rustfmt_skip)]
     let led_pins = static_init!(
         [(&'static stm32f429::gpio::GPIOPin,capsules::led::ActivationMode); 1],
-        [(&stm32f429::gpio::PD13,capsules::led::ActivationMode::ActiveHigh)]
+        [(&stm32f429::gpio::PG13,capsules::led::ActivationMode::ActiveHigh)]
     );
 
     let led = static_init!(

@@ -13,22 +13,22 @@ const SIZE: usize = 0x400;
 
 pub static mut PA0: GPIOPin = GPIOPin::new(PortNum::A, 0);
 pub static mut PD12: GPIOPin = GPIOPin::new(PortNum::D, 12);
-pub static mut PD13: GPIOPin = GPIOPin::new(PortNum::G, 13);
-pub static mut PD14: GPIOPin = GPIOPin::new(PortNum::G, 14);
+pub static mut PG13: GPIOPin = GPIOPin::new(PortNum::G, 13);
+pub static mut PG14: GPIOPin = GPIOPin::new(PortNum::G, 14);
 pub static mut PD15: GPIOPin = GPIOPin::new(PortNum::D, 15);
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub static mut PORT_MAP: PortMap = unsafe {
     PortMap {
         pins: [
-            Some(&PA0), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+            Some(&PA0), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, //A
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, //B
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, //C
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, //D
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, //E
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, //F
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, //G
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, //H
             None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
             None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
         ],

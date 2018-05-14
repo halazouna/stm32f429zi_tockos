@@ -4,6 +4,7 @@ use cortexm4;
 use exti;
 use kernel::Chip;
 
+
 pub struct STM32F429ZI {
     pub mpu: cortexm4::mpu::MPU,
     pub systick: cortexm4::systick::SysTick,
@@ -71,4 +72,5 @@ impl Chip for STM32F429ZI {
             }
         }*/
     }
+
 }
